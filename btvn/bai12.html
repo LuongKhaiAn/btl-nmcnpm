@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thay đổi giá trị của thuộc tính</title>
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2 class="text-center mb-4">Hãy nhập hai số và click vào nút Tính tổng</h2>
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="input-group mb-3">
+                    <input type="text" name="SoHang1" class="form-control" placeholder="Số hạng 1">
+                    <span class="input-group-text">+</span>
+                    <input type="text" name="SoHang2" class="form-control" placeholder="Số hạng 2">
+                    <span class="input-group-text">=</span>
+                    <input type="text" name="KetQua" class="form-control" placeholder="Kết quả" readonly>
+                </div>
+                <div class="text-center">
+                    <button type="button" class="btn btn-primary" onClick="calculateSum()">Tính tổng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="bai12_sum.js"></script>
+</body>
+</html>
