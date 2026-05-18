@@ -3,9 +3,6 @@
 * Git
 * Node.js (phiên bản 18.x trở lên) hoặc [Môi trường chạy code của bạn]
 
-## Tải code về máy
-* `git clone https://github.com/LuongKhaiAn/btl-vh18-nhom11.git`
-
 ## `npm install` hoặc `yarn`
 * Tải tập tin và thư viện cần thiết để chạy dự án
 
