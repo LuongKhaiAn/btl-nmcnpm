@@ -31,9 +31,6 @@ function LoginPage() {
           <p className={styles["login-hint"]}>
             Admin: admin/admin123 - Khách hàng: customer/123456
           </p>
-          <p className={styles["login-hint"]}>
-            Admin: admin/admin123 - Khách hàng: customer/123456
-          </p>
           {error && <Alert variant="danger">{error}</Alert>}
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3" controlId="username">
