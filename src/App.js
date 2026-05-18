@@ -1,11 +1,34 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
-import HomeNav from "./pages/home-page/home-nav";
+import AdminPage from "./pages/admin-page/admin-page";
+import HomePage from "./pages/home-page/home-page";
+import LoginPage from "./pages/login-page/login-page";
+import { isAdmin } from "./utils/auth";
+
+function AdminRoute({ children }) {
+  if (!isAdmin()) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
 
 function App() {
   return (
-    <>
-      <HomeNav/>
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage/>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminPage />
+            </AdminRoute>
+          }
+        />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
