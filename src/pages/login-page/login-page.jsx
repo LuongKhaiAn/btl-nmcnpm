@@ -20,7 +20,7 @@ function LoginPage() {
       return;
     }
 
-    navigate("/");
+    navigate(user.role === "admin" ? "/admin" : "/");
   };
 
   return (
