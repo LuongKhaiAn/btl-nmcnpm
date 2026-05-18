@@ -20,7 +20,7 @@ function LoginPage() {
       return;
     }
 
-    navigate(user.role === "admin" ? "/admin" : "/");
+    navigate(user.role === "admin" ? "/admin" : "/account");
   };
 
   return (
@@ -28,6 +28,12 @@ function LoginPage() {
       <Card className={styles["login-card"]}>
         <Card.Body>
           <h1 className={styles["login-title"]}>Đăng nhập</h1>
+          <p className={styles["login-hint"]}>
+            Admin: admin/admin123 - Khách hàng: customer/123456
+          </p>
+          <p className={styles["login-hint"]}>
+            Admin: admin/admin123 - Khách hàng: customer/123456
+          </p>
           {error && <Alert variant="danger">{error}</Alert>}
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3" controlId="username">

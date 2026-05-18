@@ -1,0 +1,148 @@
+.booking-page {
+  min-height: calc(100vh - 72px);
+  padding: 42px 0 56px;
+  background: #f4f6f8;
+}
+
+.page-heading {
+  max-width: 760px;
+  margin-bottom: 28px;
+
+  span {
+    color: #b42318;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 8px 0;
+    font-size: 36px;
+    font-weight: 800;
+  }
+
+  p {
+    margin: 0;
+    color: #667085;
+  }
+}
+
+.booking-panel {
+  height: 100%;
+  padding: 22px;
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  background: #ffffff;
+
+  h2 {
+    margin: 0 0 16px;
+    font-size: 22px;
+    font-weight: 800;
+  }
+}
+
+.movie-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 22px 0;
+  padding: 18px;
+  border-radius: 8px;
+  background: #172033;
+  color: #ffffff;
+
+  h3 {
+    margin: 8px 0 4px;
+    font-size: 22px;
+  }
+
+  p {
+    margin: 0;
+    color: #d9dee8;
+  }
+}
+
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  margin-bottom: 18px;
+  border-radius: 4px;
+  background: #dfe5ef;
+  color: #465063;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.seat-map {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(42px, 1fr));
+  gap: 8px;
+}
+
+.seat {
+  min-height: 40px;
+  border: 1px solid #ccd4df;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.available {
+  background: #f8fafc;
+  color: #172033;
+}
+
+.held {
+  background: #fff3cd;
+  color: #664d03;
+}
+
+.booked {
+  background: #d1e7dd;
+  color: #0f5132;
+}
+
+.selected {
+  border-color: #b42318;
+  background: #b42318;
+  color: #ffffff;
+}
+
+.order-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin: 18px 0;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f4f6f8;
+
+  span {
+    color: #667085;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  strong {
+    margin-bottom: 8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .page-heading h1 {
+    font-size: 28px;
+  }
+
+  .seat-map {
+    grid-template-columns: repeat(4, minmax(48px, 1fr));
+  }
+
+  .movie-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

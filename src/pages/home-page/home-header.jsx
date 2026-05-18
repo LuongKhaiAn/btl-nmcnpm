@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Avatar, Dropdown } from "antd";
-import { Button, Col, Form, Nav, Navbar, NavLink, Row } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { Button, Container, Nav, Navbar } from "react-bootstrap";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import styles from "./styles.module.scss";
 import logo from "../../assets/images/logo.svg";
 import { getCurrentUser, logout } from "../../utils/auth";
@@ -16,12 +16,18 @@ const HomeHeader = () => {
     navigate("/");
   };
 
-  const adminMenuItems = [
-    {
-      key: "admin",
-      label: "Trang quản lý",
-      onClick: () => navigate("/admin"),
-    },
+  const menuItems = [
+    currentUser?.role === "admin"
+      ? {
+        key: "admin",
+        label: "Trang quản lý",
+        onClick: () => navigate("/admin"),
+      }
+      : {
+        key: "account",
+        label: "Tài khoản",
+        onClick: () => navigate("/account"),
+      },
     {
       key: "logout",
       label: "Đăng xuất",
@@ -30,44 +36,42 @@ const HomeHeader = () => {
   ];
 
   return (
-    <div>
-      <Navbar bg="light">
-        <Navbar.Brand href="/" className="col-2">
-          <img src={logo} className={styles["nav-logo"]} alt="Logo" />
+    <Navbar expand="lg" className={styles["site-header"]}>
+      <Container fluid className={styles["header-inner"]}>
+        <Navbar.Brand as={Link} to="/" className={styles["brand-link"]}>
+          <img src={logo} className={styles["nav-logo"]} alt="cinemaX" />
+          <span>cinemaX</span>
         </Navbar.Brand>
-        <Nav className="flex-row col-7 justify-content-center">
-          <NavLink href="/">Home</NavLink>
-          <NavLink href="/product">Product</NavLink>
-          <NavLink href="/about-us">About us</NavLink>
-        </Nav>
-        <Form className="col-3">
-          <Row>
-            <Col className="col-5">
-              <Form.Control
-                type="search"
-              >
-              </Form.Control>
-            </Col>
-            <Col className="col-77 d-flex gap-2">
-              {currentUser?.role === "admin" ? (
-                <Dropdown menu={{ items: adminMenuItems }} placement="bottomRight">
-                  <div className={styles["login-status"]}>
-                    <Avatar className={styles["admin-avatar"]}>
-                      {currentUser.username.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <span>{currentUser.username}</span>
-                  </div>
-                </Dropdown>
-              ) : (
-                <Button className="" href="/login">
-                  Đăng nhập
-                </Button>
-              )}
-            </Col>
-          </Row>
-        </Form>
-      </Navbar>
-    </div>
+        <Navbar.Toggle aria-controls="cinemax-nav" />
+        <Navbar.Collapse id="cinemax-nav">
+          <Nav className={styles["main-nav"]}>
+            <Nav.Link as={NavLink} to="/">
+              Trang chủ
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/booking">
+              Đặt vé
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/account">
+              Tài khoản
+            </Nav.Link>
+          </Nav>
+          <div className={styles["header-actions"]}>
+            {currentUser ? (
+              <Dropdown menu={{ items: menuItems }} placement="bottomRight">
+                <button className={styles["login-status"]} type="button">
+                  <Avatar className={styles["user-avatar"]}>
+                    {currentUser.username.charAt(0).toUpperCase()}
+                  </Avatar>
+                  <span>{currentUser.username}</span>
+                </button>
+              </Dropdown>
+            ) : (
+              <Button href="/login">Đăng nhập</Button>
+            )}
+          </div>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
   );
 };
 
