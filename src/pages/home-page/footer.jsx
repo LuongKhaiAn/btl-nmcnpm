@@ -1,10 +1,17 @@
-import React from "react";
+import { Container } from "react-bootstrap";
+import styles from "./styles.module.scss";
 
 function Footer() {
   return (
-    <div className="text-center py-4" style={{ backgroundColor: "#f5f5f5", marginTop: "20px", width: "100%" }}>
-      <p>&copy; 2026 My App. All rights reserved.</p>
-    </div>
+    <footer className={styles["site-footer"]}>
+      <Container className={styles["footer-inner"]}>
+        <div>
+          <strong>cinemaX</strong>
+          <p>Hệ thống đặt vé và quản lý rạp chiếu phim.</p>
+        </div>
+        <span>© 2026 cinemaX. All rights reserved.</span>
+      </Container>
+    </footer>
   );
 }
 

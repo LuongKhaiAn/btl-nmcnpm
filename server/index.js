@@ -247,6 +247,213 @@ app.get("/api/admin/dashboard", async (req, res) => {
   }
 });
 
+app.get("/api/booking/options", async (req, res) => {
+  try {
+    const [[movies], [schedules], [seats], [bookedSeats]] = await Promise.all([
+      db.query(`
+        SELECT
+          MaPhim AS id,
+          TenPhim AS title,
+          TheLoai AS genre,
+          ThoiLuong AS duration,
+          DaoDien AS director,
+          DienVien AS cast,
+          QuocGia AS country,
+          DATE_FORMAT(NgayKhoiChieu, '%Y-%m-%d') AS releaseDate,
+          NoiDung AS description,
+          CASE
+            WHEN NgayKhoiChieu > CURDATE() THEN 'Sắp chiếu'
+            ELSE 'Đang chiếu'
+          END AS status
+        FROM PHIM
+        ORDER BY NgayKhoiChieu DESC, MaPhim DESC
+      `),
+      db.query(`
+        SELECT
+          lc.MaLichChieu AS id,
+          lc.MaPhim AS movieId,
+          p.TenPhim AS movie,
+          lc.MaPhong AS roomId,
+          pc.TenPhong AS room,
+          pc.LoaiPhong AS format,
+          DATE_FORMAT(lc.NgayChieu, '%Y-%m-%d') AS date,
+          TIME_FORMAT(lc.GioChieu, '%H:%i') AS time,
+          lc.GiaVe AS price
+        FROM LICHCHIEU lc
+        JOIN PHIM p ON p.MaPhim = lc.MaPhim
+        JOIN PHONGCHIEU pc ON pc.MaPhong = lc.MaPhong
+        ORDER BY lc.NgayChieu ASC, lc.GioChieu ASC
+      `),
+      db.query(`
+        SELECT
+          g.MaGhe AS id,
+          g.MaPhong AS roomId,
+          g.TenGhe AS name,
+          g.LoaiGhe AS type,
+          g.TrangThai AS status
+        FROM GHE g
+        ORDER BY g.MaPhong ASC, g.TenGhe ASC
+      `),
+      db.query(`
+        SELECT
+          MaLichChieu AS scheduleId,
+          MaGhe AS seatId
+        FROM VE
+      `),
+    ]);
+
+    res.json({ movies, schedules, seats, bookedSeats });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể tải dữ liệu đặt vé.",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/booking", async (req, res) => {
+  const { scheduleId, seatId, customerName, phone, email } = req.body;
+
+  if (!scheduleId || !seatId || !customerName || !phone) {
+    res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin đặt vé." });
+    return;
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [existingTickets] = await connection.query(
+      "SELECT MaVe FROM VE WHERE MaLichChieu = ? AND MaGhe = ? LIMIT 1",
+      [scheduleId, seatId],
+    );
+
+    if (existingTickets.length > 0) {
+      await connection.rollback();
+      res.status(409).json({ message: "Ghế này đã được đặt cho suất chiếu đã chọn." });
+      return;
+    }
+
+    const [scheduleRows] = await connection.query(
+      "SELECT GiaVe FROM LICHCHIEU WHERE MaLichChieu = ? LIMIT 1",
+      [scheduleId],
+    );
+
+    if (scheduleRows.length === 0) {
+      await connection.rollback();
+      res.status(404).json({ message: "Không tìm thấy lịch chiếu." });
+      return;
+    }
+
+    const [customerRows] = await connection.query(
+      "SELECT MaKhachHang FROM KHACHHANG WHERE SoDienThoai = ? LIMIT 1",
+      [phone],
+    );
+
+    let customerId = customerRows[0]?.MaKhachHang;
+
+    if (!customerId) {
+      const [customerResult] = await connection.query(
+        "INSERT INTO KHACHHANG (HoTen, SoDienThoai, Email) VALUES (?, ?, ?)",
+        [customerName, phone, email || null],
+      );
+      customerId = customerResult.insertId;
+    }
+
+    const [ticketResult] = await connection.query(
+      `
+        INSERT INTO VE
+          (MaLichChieu, MaGhe, MaKhachHang, NgayDat, GiaVe, TrangThaiThanhToan)
+        VALUES
+          (?, ?, ?, NOW(), ?, 'Chưa thanh toán')
+      `,
+      [scheduleId, seatId, customerId, scheduleRows[0].GiaVe],
+    );
+
+    await connection.commit();
+
+    res.status(201).json({
+      message: "Đặt vé thành công.",
+      ticketId: ticketResult.insertId,
+      customerId,
+    });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({
+      message: "Không thể tạo vé.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+app.get("/api/customer/account", async (req, res) => {
+  const customerId = Number(req.query.customerId || 1);
+
+  try {
+    const [[customers], [tickets]] = await Promise.all([
+      db.query(
+        `
+          SELECT
+            MaKhachHang AS id,
+            HoTen AS name,
+            SoDienThoai AS phone,
+            Email AS email
+          FROM KHACHHANG
+          WHERE MaKhachHang = ?
+          LIMIT 1
+        `,
+        [customerId],
+      ),
+      db.query(
+        `
+          SELECT
+            v.MaVe AS id,
+            p.TenPhim AS movie,
+            pc.TenPhong AS room,
+            g.TenGhe AS seat,
+            DATE_FORMAT(lc.NgayChieu, '%d/%m/%Y') AS date,
+            TIME_FORMAT(lc.GioChieu, '%H:%i') AS time,
+            DATE_FORMAT(v.NgayDat, '%d/%m/%Y %H:%i') AS bookedAt,
+            v.GiaVe AS price,
+            v.TrangThaiThanhToan AS paymentStatus
+          FROM VE v
+          JOIN LICHCHIEU lc ON lc.MaLichChieu = v.MaLichChieu
+          JOIN PHIM p ON p.MaPhim = lc.MaPhim
+          JOIN PHONGCHIEU pc ON pc.MaPhong = lc.MaPhong
+          JOIN GHE g ON g.MaGhe = v.MaGhe
+          WHERE v.MaKhachHang = ?
+          ORDER BY v.NgayDat DESC, v.MaVe DESC
+        `,
+        [customerId],
+      ),
+    ]);
+
+    if (customers.length === 0) {
+      res.status(404).json({ message: "Không tìm thấy tài khoản khách hàng." });
+      return;
+    }
+
+    res.json({
+      customer: customers[0],
+      tickets,
+      stats: {
+        ticketCount: tickets.length,
+        totalSpent: tickets
+          .filter((ticket) => ticket.paymentStatus === "Đã thanh toán")
+          .reduce((sum, ticket) => sum + Number(ticket.price || 0), 0),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể tải thông tin khách hàng.",
+      error: error.message,
+    });
+  }
+});
+
 const server = app.listen(port, host, () => {
   console.log(`API server is running at http://${host}:${port}`);
 });

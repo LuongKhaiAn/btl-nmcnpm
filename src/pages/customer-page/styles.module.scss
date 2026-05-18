@@ -1,0 +1,133 @@
+.account-page {
+  min-height: calc(100vh - 72px);
+  padding: 42px 0 56px;
+  background: #f4f6f8;
+}
+
+.page-heading {
+  max-width: 760px;
+  margin-bottom: 28px;
+
+  span {
+    color: #b42318;
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 8px 0;
+    font-size: 36px;
+    font-weight: 800;
+  }
+
+  p {
+    margin: 0;
+    color: #667085;
+  }
+}
+
+.profile-card,
+.stat-card,
+.history-panel {
+  border: 1px solid #d9dee8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.profile-card {
+  padding: 24px;
+  text-align: center;
+
+  h2 {
+    margin: 12px 0 4px;
+    font-size: 24px;
+    font-weight: 800;
+  }
+
+  p {
+    margin-bottom: 20px;
+    color: #667085;
+  }
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: #172033;
+  color: #ffffff;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #edf0f5;
+  text-align: left;
+
+  span {
+    color: #667085;
+  }
+}
+
+.stat-card {
+  padding: 20px;
+
+  span {
+    color: #667085;
+    font-weight: 700;
+  }
+
+  strong {
+    display: block;
+    margin-top: 8px;
+    font-size: 28px;
+  }
+}
+
+.history-panel {
+  padding: 20px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+
+  h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 800;
+  }
+}
+
+.ticket-table {
+  margin: 0;
+
+  th {
+    color: #465063;
+    font-size: 13px;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+
+  td {
+    vertical-align: middle;
+  }
+}
+
+@media (max-width: 576px) {
+  .page-heading h1 {
+    font-size: 28px;
+  }
+}
