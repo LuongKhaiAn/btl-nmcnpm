@@ -18,9 +18,10 @@
 }
 
 .home-carousel {
-  margin-top: 20px;
+  background-color: #FFF9D2;
   display: flex;
   justify-content: center;
+  height: 400px;
 
   :global(.ant-carousel) {
     width: 100%;
