@@ -9,6 +9,10 @@
     "@testing-library/user-event": "^13.5.0",
     "antd": "^6.4.2",
     "bootstrap": "5.3.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "mysql2": "^3.15.3",
     "react": "^19.2.4",
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.4",
@@ -21,9 +25,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "eslint:fix": "yarn eslint --fix",
+    "server": "node server/index.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
+  "proxy": "http://localhost:5000",
   "eslintConfig": {
     "extends": [
       "react-app",
