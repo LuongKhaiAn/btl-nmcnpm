@@ -5,6 +5,18 @@
   margin-left: 30px;
 }
 
+.login-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.admin-avatar {
+  background-color: #1677ff;
+}
+
 .home-carousel {
   margin-top: 20px;
   display: flex;
