@@ -223,11 +223,23 @@
   border-radius: 6px;
   font-size: 12px;
   font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
 }
 
 .available {
   background: #f8fafc;
   color: #172033;
+
+  &:hover:not(:disabled) {
+    background: #e8ecf4;
+    border-color: #172033;
+  }
 }
 
 .held {
@@ -238,6 +250,12 @@
 .booked {
   background: #d1e7dd;
   color: #0f5132;
+}
+
+.selected {
+  background: #172033;
+  color: #ffffff;
+  border-color: #172033;
 }
 
 .seat-legend {

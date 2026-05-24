@@ -389,6 +389,161 @@ app.post("/api/booking", async (req, res) => {
   }
 });
 
+app.post("/api/admin/movies", async (req, res) => {
+  const {
+    tenPhim,
+    theLoai,
+    thoiLuong,
+    daoDien,
+    dienVien,
+    quocGia,
+    ngayKhoiChieu,
+    noiDung,
+  } = req.body;
+
+  if (!tenPhim || !theLoai || !thoiLuong || !ngayKhoiChieu) {
+    res.status(400).json({
+      message: "Vui lòng nhập đầy đủ thông tin bắt buộc: tên phim, thể loại, thời lượng, ngày khởi chiếu.",
+    });
+    return;
+  }
+
+  try {
+    const [result] = await db.query(
+      `
+        INSERT INTO PHIM (TenPhim, TheLoai, ThoiLuong, DaoDien, DienVien, QuocGia, NgayKhoiChieu, NoiDung)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [tenPhim, theLoai, thoiLuong, daoDien || null, dienVien || null, quocGia || null, ngayKhoiChieu, noiDung || null],
+    );
+
+    res.status(201).json({
+      message: "Thêm phim thành công.",
+      movieId: result.insertId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể thêm phim.",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/admin/schedules", async (req, res) => {
+  const { maPhim, maPhong, ngayChieu, gioChieu, giaVe } = req.body;
+
+  if (!maPhim || !maPhong || !ngayChieu || !gioChieu || giaVe === undefined) {
+    res.status(400).json({
+      message: "Vui lòng nhập đầy đủ thông tin bắt buộc: phim, phòng, ngày, giờ, giá vé.",
+    });
+    return;
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [existingSchedule] = await connection.query(
+      "SELECT MaLichChieu FROM LICHCHIEU WHERE MaPhong = ? AND NgayChieu = ? AND GioChieu = ? LIMIT 1",
+      [maPhong, ngayChieu, gioChieu],
+    );
+
+    if (existingSchedule.length > 0) {
+      await connection.rollback();
+      res.status(409).json({
+        message: "Suất chiếu này đã tồn tại cho phòng, ngày và giờ đã chọn.",
+      });
+      return;
+    }
+
+    const [result] = await connection.query(
+      `
+        INSERT INTO LICHCHIEU (MaPhim, MaPhong, NgayChieu, GioChieu, GiaVe)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      [maPhim, maPhong, ngayChieu, gioChieu, giaVe],
+    );
+
+    await connection.commit();
+
+    res.status(201).json({
+      message: "Tạo suất chiếu thành công.",
+      scheduleId: result.insertId,
+    });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({
+      message: "Không thể tạo suất chiếu.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+});
+
+app.post("/api/admin/tickets", async (req, res) => {
+  const { maLichChieu, maGhe } = req.body;
+
+  if (!maLichChieu || !maGhe) {
+    res.status(400).json({
+      message: "Vui lòng nhập đầy đủ thông tin bắt buộc: suất chiếu, ghế.",
+    });
+    return;
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [existingTickets] = await connection.query(
+      "SELECT MaVe FROM VE WHERE MaLichChieu = ? AND MaGhe = ? LIMIT 1",
+      [maLichChieu, maGhe],
+    );
+
+    if (existingTickets.length > 0) {
+      await connection.rollback();
+      res.status(409).json({ message: "Ghế này đã được đặt cho suất chiếu này." });
+      return;
+    }
+
+    const [scheduleRows] = await connection.query(
+      "SELECT GiaVe FROM LICHCHIEU WHERE MaLichChieu = ? LIMIT 1",
+      [maLichChieu],
+    );
+
+    if (scheduleRows.length === 0) {
+      await connection.rollback();
+      res.status(404).json({ message: "Không tìm thấy suất chiếu." });
+      return;
+    }
+
+    const [ticketResult] = await connection.query(
+      `
+        INSERT INTO VE (MaLichChieu, MaGhe, NgayDat, GiaVe, TrangThaiThanhToan)
+        VALUES (?, ?, NOW(), ?, ?)
+      `,
+      [maLichChieu, maGhe, scheduleRows[0].GiaVe, "Đã thanh toán"],
+    );
+
+    await connection.commit();
+
+    res.status(201).json({
+      message: "Bán vé tại quầy thành công.",
+      ticketId: ticketResult.insertId,
+    });
+  } catch (error) {
+    await connection.rollback();
+    res.status(500).json({
+      message: "Không thể tạo vé.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+});
+
 app.get("/api/customer/account", async (req, res) => {
   const customerId = Number(req.query.customerId || 1);
 

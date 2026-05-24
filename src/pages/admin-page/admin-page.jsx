@@ -15,6 +15,9 @@ import {
 } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import styles from "./styles.module.scss";
+import AddMovieModal from "./add-movie";
+import CounterTicketModal from "./counter-ticket";
+import CreateScheduleModal from "./creat-schedule";
 import { logout } from "../../utils/auth";
 
 const emptyDashboard = {
@@ -78,6 +81,9 @@ function AdminPage() {
     connected: false,
     message: "",
   });
+  const [showMovieForm, setShowMovieForm] = useState(false);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [showCounterForm, setShowCounterForm] = useState(false);
 
   useEffect(() => {
     async function checkDatabase() {
@@ -166,6 +172,29 @@ function AdminPage() {
     navigate("/login");
   };
 
+  const handleReloadDashboard = async () => {
+    try {
+      const response = await fetch("/api/admin/dashboard");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Không thể tải dữ liệu quản trị.");
+      }
+
+      setDashboard({
+        ...emptyDashboard,
+        ...data,
+        metrics: {
+          ...emptyDashboard.metrics,
+          ...data.metrics,
+        },
+      });
+      setSelectedRoomId(data.rooms?.[0]?.id ?? null);
+    } catch (error) {
+      console.error("Reload dashboard error:", error);
+    }
+  };
+
   return (
     <div className={styles["admin-shell"]}>
       <Navbar className={styles["admin-header"]}>
@@ -251,7 +280,7 @@ function AdminPage() {
                   <h2>Phim đang chiếu và sắp chiếu</h2>
                   <p>Danh sách lấy từ bảng PHIM và trạng thái tính theo ngày khởi chiếu.</p>
                 </div>
-                <Button>Thêm phim</Button>
+                <Button onClick={() => setShowMovieForm(true)}>Thêm phim</Button>
               </div>
               <Table hover responsive className={styles["data-table"]}>
                 <thead>
@@ -296,7 +325,7 @@ function AdminPage() {
                   <h2>Lịch chiếu và phòng chiếu</h2>
                   <p>Dữ liệu join từ LICHCHIEU, PHIM, PHONGCHIEU và VE.</p>
                 </div>
-                <Button>Tạo suất chiếu</Button>
+                <Button onClick={() => setShowScheduleForm(true)}>Tạo suất chiếu</Button>
               </div>
               <Table hover responsive className={styles["data-table"]}>
                 <thead>
@@ -408,7 +437,7 @@ function AdminPage() {
                   <h2>Đặt vé online và tại quầy</h2>
                   <p>Danh sách lấy từ VE, kèm thông tin phim, phòng, ghế và khách hàng.</p>
                 </div>
-                <Button>Bán vé tại quầy</Button>
+                <Button onClick={() => setShowCounterForm(true)}>Bán vé tại quầy</Button>
               </div>
               <Table hover responsive className={styles["data-table"]}>
                 <thead>
@@ -519,6 +548,28 @@ function AdminPage() {
             </Tab>
           </Tabs>
         )}
+
+        <AddMovieModal
+          show={showMovieForm}
+          onHide={() => setShowMovieForm(false)}
+          onSuccess={handleReloadDashboard}
+        />
+
+        <CreateScheduleModal
+          show={showScheduleForm}
+          onHide={() => setShowScheduleForm(false)}
+          movies={dashboard.movies}
+          rooms={dashboard.rooms}
+          onSuccess={handleReloadDashboard}
+        />
+
+        <CounterTicketModal
+          show={showCounterForm}
+          onHide={() => setShowCounterForm(false)}
+          schedules={dashboard.schedules}
+          seats={dashboard.seats}
+          onSuccess={handleReloadDashboard}
+        />
       </Container>
     </div>
   );
