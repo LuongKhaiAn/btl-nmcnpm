@@ -31,6 +31,55 @@ app.get("/api/db/ping", async (req, res) => {
   }
 });
 
+app.post("/api/auth/customer-login", async (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    res.status(400).json({ message: "Vui lòng nhập tài khoản và mật khẩu." });
+    return;
+  }
+
+  if (password !== "123456") {
+    res.status(401).json({ message: "Tài khoản hoặc mật khẩu không đúng." });
+    return;
+  }
+
+  try {
+    const [customers] = await db.query(
+      `
+        SELECT
+          MaKhachHang AS customerId,
+          HoTen AS name,
+          SoDienThoai AS phone,
+          Email AS email
+        FROM KHACHHANG
+        WHERE SoDienThoai = ? OR Email = ?
+        LIMIT 1
+      `,
+      [username, username],
+    );
+
+    if (customers.length === 0) {
+      res.status(401).json({ message: "Tài khoản hoặc mật khẩu không đúng." });
+      return;
+    }
+
+    const customer = customers[0];
+
+    res.json({
+      username: customer.phone || customer.email,
+      displayName: customer.name,
+      role: "customer",
+      customerId: customer.customerId,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể đăng nhập khách hàng.",
+      error: error.message,
+    });
+  }
+});
+
 app.get("/api/admin/dashboard", async (req, res) => {
   try {
     const [
@@ -41,6 +90,7 @@ app.get("/api/admin/dashboard", async (req, res) => {
       [tickets],
       [customers],
       [employees],
+      [bookedSeats],
       [revenueRows],
       [todayTicketRows],
       [showtimeRows],
@@ -75,8 +125,11 @@ app.get("/api/admin/dashboard", async (req, res) => {
       db.query(`
         SELECT
           lc.MaLichChieu AS id,
+          lc.MaPhim AS movieId,
+          lc.MaPhong AS roomId,
           p.TenPhim AS movie,
           pc.TenPhong AS room,
+          DATE_FORMAT(lc.NgayChieu, '%Y-%m-%d') AS rawDate,
           DATE_FORMAT(lc.NgayChieu, '%d/%m/%Y') AS date,
           TIME_FORMAT(lc.GioChieu, '%H:%i') AS time,
           pc.LoaiPhong AS format,
@@ -165,6 +218,12 @@ app.get("/api/admin/dashboard", async (req, res) => {
         ORDER BY nv.MaNhanVien ASC
       `),
       db.query(`
+        SELECT
+          MaLichChieu AS scheduleId,
+          MaGhe AS seatId
+        FROM VE
+      `),
+      db.query(`
         SELECT COALESCE(SUM(GiaVe), 0) AS revenue
         FROM VE
         WHERE TrangThaiThanhToan = 'Đã thanh toán'
@@ -229,13 +288,16 @@ app.get("/api/admin/dashboard", async (req, res) => {
       })),
       seats,
       tickets,
+      customers,
+      employees,
+      bookedSeats,
       people,
       metrics: {
         revenue: Number(revenueRows[0]?.revenue || 0),
         tickets: Number(todayTicketRows[0]?.tickets || 0),
         showtimes: Number(showtimeRows[0]?.showtimes || 0),
-        occupancy: paidSeatRows[0]?.totalSeats
-          ? Math.round((paidSeatRows[0].paidSeats / paidSeatRows[0].totalSeats) * 100)
+        occupancy: Number(paidSeatRows[0]?.totalSeats || 0)
+          ? Math.round((Number(paidSeatRows[0].paidSeats || 0) / Number(paidSeatRows[0].totalSeats || 0)) * 100)
           : 0,
       },
     });
@@ -429,6 +491,86 @@ app.post("/api/admin/movies", async (req, res) => {
   }
 });
 
+app.put("/api/admin/movies/:id", async (req, res) => {
+  const movieId = Number(req.params.id);
+  const {
+    tenPhim,
+    theLoai,
+    thoiLuong,
+    daoDien,
+    dienVien,
+    quocGia,
+    ngayKhoiChieu,
+    noiDung,
+  } = req.body;
+
+  if (!movieId || !tenPhim || !theLoai || !thoiLuong || !ngayKhoiChieu) {
+    res.status(400).json({
+      message: "Vui lòng nhập đầy đủ thông tin bắt buộc: tên phim, thể loại, thời lượng, ngày khởi chiếu.",
+    });
+    return;
+  }
+
+  try {
+    const [result] = await db.query(
+      `
+        UPDATE PHIM
+        SET TenPhim = ?, TheLoai = ?, ThoiLuong = ?, DaoDien = ?,
+            DienVien = ?, QuocGia = ?, NgayKhoiChieu = ?, NoiDung = ?
+        WHERE MaPhim = ?
+      `,
+      [
+        tenPhim,
+        theLoai,
+        thoiLuong,
+        daoDien || null,
+        dienVien || null,
+        quocGia || null,
+        ngayKhoiChieu,
+        noiDung || null,
+        movieId,
+      ],
+    );
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy phim." });
+      return;
+    }
+
+    res.json({ message: "Cập nhật phim thành công." });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể cập nhật phim.",
+      error: error.message,
+    });
+  }
+});
+
+app.delete("/api/admin/movies/:id", async (req, res) => {
+  const movieId = Number(req.params.id);
+
+  if (!movieId) {
+    res.status(400).json({ message: "Mã phim không hợp lệ." });
+    return;
+  }
+
+  try {
+    const [result] = await db.query("DELETE FROM PHIM WHERE MaPhim = ?", [movieId]);
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy phim." });
+      return;
+    }
+
+    res.json({ message: "Xóa phim thành công." });
+  } catch (error) {
+    res.status(409).json({
+      message: "Không thể xóa phim đang có lịch chiếu. Hãy xóa lịch chiếu liên quan trước.",
+      error: error.message,
+    });
+  }
+});
+
 app.post("/api/admin/schedules", async (req, res) => {
   const { maPhim, maPhong, ngayChieu, gioChieu, giaVe } = req.body;
 
@@ -479,6 +621,83 @@ app.post("/api/admin/schedules", async (req, res) => {
     });
   } finally {
     connection.release();
+  }
+});
+
+app.put("/api/admin/schedules/:id", async (req, res) => {
+  const scheduleId = Number(req.params.id);
+  const { maPhim, maPhong, ngayChieu, gioChieu, giaVe } = req.body;
+
+  if (!scheduleId || !maPhim || !maPhong || !ngayChieu || !gioChieu || giaVe === undefined) {
+    res.status(400).json({
+      message: "Vui lòng nhập đầy đủ thông tin bắt buộc: phim, phòng, ngày, giờ, giá vé.",
+    });
+    return;
+  }
+
+  try {
+    const [existingSchedule] = await db.query(
+      `
+        SELECT MaLichChieu
+        FROM LICHCHIEU
+        WHERE MaPhong = ? AND NgayChieu = ? AND GioChieu = ? AND MaLichChieu <> ?
+        LIMIT 1
+      `,
+      [maPhong, ngayChieu, gioChieu, scheduleId],
+    );
+
+    if (existingSchedule.length > 0) {
+      res.status(409).json({
+        message: "Suất chiếu này đã tồn tại cho phòng, ngày và giờ đã chọn.",
+      });
+      return;
+    }
+
+    const [result] = await db.query(
+      `
+        UPDATE LICHCHIEU
+        SET MaPhim = ?, MaPhong = ?, NgayChieu = ?, GioChieu = ?, GiaVe = ?
+        WHERE MaLichChieu = ?
+      `,
+      [maPhim, maPhong, ngayChieu, gioChieu, giaVe, scheduleId],
+    );
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy suất chiếu." });
+      return;
+    }
+
+    res.json({ message: "Cập nhật suất chiếu thành công." });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể cập nhật suất chiếu.",
+      error: error.message,
+    });
+  }
+});
+
+app.delete("/api/admin/schedules/:id", async (req, res) => {
+  const scheduleId = Number(req.params.id);
+
+  if (!scheduleId) {
+    res.status(400).json({ message: "Mã suất chiếu không hợp lệ." });
+    return;
+  }
+
+  try {
+    const [result] = await db.query("DELETE FROM LICHCHIEU WHERE MaLichChieu = ?", [scheduleId]);
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy suất chiếu." });
+      return;
+    }
+
+    res.json({ message: "Xóa suất chiếu thành công." });
+  } catch (error) {
+    res.status(409).json({
+      message: "Không thể xóa suất chiếu đã có vé. Hãy xử lý vé liên quan trước.",
+      error: error.message,
+    });
   }
 });
 
@@ -544,8 +763,139 @@ app.post("/api/admin/tickets", async (req, res) => {
   }
 });
 
+app.put("/api/admin/customers/:id", async (req, res) => {
+  const customerId = Number(req.params.id);
+  const { hoTen, soDienThoai, email } = req.body;
+
+  if (!customerId || !hoTen || !soDienThoai) {
+    res.status(400).json({ message: "Vui lòng nhập họ tên và số điện thoại khách hàng." });
+    return;
+  }
+
+  try {
+    const [result] = await db.query(
+      `
+        UPDATE KHACHHANG
+        SET HoTen = ?, SoDienThoai = ?, Email = ?
+        WHERE MaKhachHang = ?
+      `,
+      [hoTen, soDienThoai, email || null, customerId],
+    );
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy khách hàng." });
+      return;
+    }
+
+    res.json({ message: "Cập nhật khách hàng thành công." });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể cập nhật khách hàng.",
+      error: error.message,
+    });
+  }
+});
+
+app.delete("/api/admin/customers/:id", async (req, res) => {
+  const customerId = Number(req.params.id);
+
+  if (!customerId) {
+    res.status(400).json({ message: "Mã khách hàng không hợp lệ." });
+    return;
+  }
+
+  try {
+    const [result] = await db.query("DELETE FROM KHACHHANG WHERE MaKhachHang = ?", [customerId]);
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy khách hàng." });
+      return;
+    }
+
+    res.json({ message: "Xóa khách hàng thành công." });
+  } catch (error) {
+    res.status(409).json({
+      message: "Không thể xóa khách hàng đã có vé. Hãy xử lý vé liên quan trước.",
+      error: error.message,
+    });
+  }
+});
+
+app.put("/api/admin/employees/:id", async (req, res) => {
+  const employeeId = Number(req.params.id);
+  const { hoTen, chucVu, taiKhoan, matKhau } = req.body;
+
+  if (!employeeId || !hoTen || !chucVu || !taiKhoan) {
+    res.status(400).json({ message: "Vui lòng nhập họ tên, chức vụ và tài khoản nhân viên." });
+    return;
+  }
+
+  try {
+    const params = [hoTen, chucVu, taiKhoan];
+    let passwordSql = "";
+
+    if (matKhau) {
+      passwordSql = ", MatKhau = ?";
+      params.push(matKhau);
+    }
+
+    params.push(employeeId);
+
+    const [result] = await db.query(
+      `
+        UPDATE NHANVIEN
+        SET HoTen = ?, ChucVu = ?, TaiKhoan = ?${passwordSql}
+        WHERE MaNhanVien = ?
+      `,
+      params,
+    );
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy nhân viên." });
+      return;
+    }
+
+    res.json({ message: "Cập nhật nhân viên thành công." });
+  } catch (error) {
+    res.status(409).json({
+      message: "Không thể cập nhật nhân viên. Tài khoản có thể đã tồn tại.",
+      error: error.message,
+    });
+  }
+});
+
+app.delete("/api/admin/employees/:id", async (req, res) => {
+  const employeeId = Number(req.params.id);
+
+  if (!employeeId) {
+    res.status(400).json({ message: "Mã nhân viên không hợp lệ." });
+    return;
+  }
+
+  try {
+    const [result] = await db.query("DELETE FROM NHANVIEN WHERE MaNhanVien = ?", [employeeId]);
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy nhân viên." });
+      return;
+    }
+
+    res.json({ message: "Xóa nhân viên thành công." });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể xóa nhân viên.",
+      error: error.message,
+    });
+  }
+});
+
 app.get("/api/customer/account", async (req, res) => {
-  const customerId = Number(req.query.customerId || 1);
+  const customerId = Number(req.query.customerId);
+
+  if (!customerId) {
+    res.status(400).json({ message: "Thiếu mã khách hàng." });
+    return;
+  }
 
   try {
     const [[customers], [tickets]] = await Promise.all([
@@ -604,6 +954,39 @@ app.get("/api/customer/account", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       message: "Không thể tải thông tin khách hàng.",
+      error: error.message,
+    });
+  }
+});
+
+app.patch("/api/customer/tickets/:id/pay", async (req, res) => {
+  const ticketId = Number(req.params.id);
+  const customerId = Number(req.body.customerId);
+
+  if (!ticketId || !customerId) {
+    res.status(400).json({ message: "Thiếu thông tin vé hoặc khách hàng." });
+    return;
+  }
+
+  try {
+    const [result] = await db.query(
+      `
+        UPDATE VE
+        SET TrangThaiThanhToan = 'Đã thanh toán'
+        WHERE MaVe = ? AND MaKhachHang = ?
+      `,
+      [ticketId, customerId],
+    );
+
+    if (result.affectedRows === 0) {
+      res.status(404).json({ message: "Không tìm thấy vé cần thanh toán." });
+      return;
+    }
+
+    res.json({ message: "Thanh toán vé thành công." });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể thanh toán vé.",
       error: error.message,
     });
   }

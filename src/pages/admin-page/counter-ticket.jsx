@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 import styles from "./styles.module.scss";
 
-function CounterTicketModal({ show, onHide, schedules, seats, onSuccess }) {
+function CounterTicketModal({ show, onHide, schedules, seats, bookedSeats = [], onSuccess }) {
   const [formData, setFormData] = useState({
     maLichChieu: "",
     maGhe: "",
@@ -22,6 +22,16 @@ function CounterTicketModal({ show, onHide, schedules, seats, onSuccess }) {
 
     return seats.filter((seat) => seat.roomId === selectedSchedule.roomId);
   }, [selectedSchedule, seats]);
+
+  const bookedSeatIds = useMemo(() => {
+    if (!selectedSchedule) return new Set();
+
+    return new Set(
+      bookedSeats
+        .filter((seat) => seat.scheduleId === selectedSchedule.id)
+        .map((seat) => seat.seatId),
+    );
+  }, [bookedSeats, selectedSchedule]);
 
   const handleScheduleChange = (e) => {
     const { value } = e.target;
@@ -123,25 +133,30 @@ function CounterTicketModal({ show, onHide, schedules, seats, onSuccess }) {
               <Form.Group className="mb-3">
                 <Form.Label>Chọn ghế *</Form.Label>
                 <div className={styles["seat-map"]}>
-                  {availableSeats.map((seat) => (
-                    <button
-                      key={seat.id}
-                      type="button"
-                      className={`${styles.seat} ${
-                        seat.status === "Đã đặt"
-                          ? styles.booked
-                          : seat.status.includes("Giữ")
-                            ? styles.held
-                            : formData.maGhe === String(seat.id)
-                              ? styles.selected
-                              : styles.available
-                      }`}
-                      onClick={() => handleSeatClick(seat.id)}
-                      disabled={seat.status === "Đã đặt" || seat.status.includes("Giữ")}
-                    >
-                      {seat.name}
-                    </button>
-                  ))}
+                  {availableSeats.map((seat) => {
+                    const isBooked = bookedSeatIds.has(seat.id) || seat.status === "Đã đặt";
+                    const isHeld = seat.status.includes("Giữ") || seat.status.includes("Bảo trì");
+
+                    return (
+                      <button
+                        key={seat.id}
+                        type="button"
+                        className={`${styles.seat} ${
+                          isBooked
+                            ? styles.booked
+                            : isHeld
+                              ? styles.held
+                              : formData.maGhe === String(seat.id)
+                                ? styles.selected
+                                : styles.available
+                        }`}
+                        onClick={() => handleSeatClick(seat.id)}
+                        disabled={isBooked || isHeld}
+                      >
+                        {seat.name}
+                      </button>
+                    );
+                  })}
                 </div>
                 <div style={{ marginTop: "12px", fontSize: "13px", color: "#657086" }}>
                   <div>
