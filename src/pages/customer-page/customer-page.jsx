@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Badge, Button, Col, Container, Row, Table } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import styles from "./styles.module.scss";
@@ -23,33 +23,59 @@ function CustomerPage() {
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [payingTicketId, setPayingTicketId] = useState(null);
 
-  useEffect(() => {
-    async function loadAccount() {
-      if (!currentUser?.customerId) {
-        setMessage("Vui lòng đăng nhập bằng tài khoản khách hàng để xem thông tin tài khoản.");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch(`/api/customer/account?customerId=${currentUser.customerId}`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || "Không thể tải thông tin khách hàng.");
-        }
-
-        setAccount(data);
-      } catch (error) {
-        setMessage(error.message || "Không thể tải thông tin khách hàng.");
-      } finally {
-        setLoading(false);
-      }
+  const loadAccount = useCallback(async () => {
+    if (!currentUser?.customerId) {
+      setMessage("Vui lòng đăng nhập bằng tài khoản khách hàng để xem thông tin tài khoản.");
+      setLoading(false);
+      return;
     }
 
-    loadAccount();
+    try {
+      const response = await fetch(`/api/customer/account?customerId=${currentUser.customerId}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Không thể tải thông tin khách hàng.");
+      }
+
+      setAccount(data);
+    } catch (error) {
+      setMessage(error.message || "Không thể tải thông tin khách hàng.");
+    } finally {
+      setLoading(false);
+    }
   }, [currentUser?.customerId]);
+
+  useEffect(() => {
+    loadAccount();
+  }, [loadAccount]);
+
+  const handlePayTicket = async (ticketId) => {
+    setMessage("");
+    setPayingTicketId(ticketId);
+
+    try {
+      const response = await fetch(`/api/customer/tickets/${ticketId}/pay`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId: currentUser.customerId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Không thể thanh toán vé.");
+      }
+
+      setMessage(`Thanh toán vé VE${ticketId} thành công.`);
+      await loadAccount();
+    } catch (error) {
+      setMessage(error.message || "Không thể thanh toán vé.");
+    } finally {
+      setPayingTicketId(null);
+    }
+  };
 
   return (
     <>
@@ -62,7 +88,11 @@ function CustomerPage() {
             <p>Theo dõi hồ sơ, vé đã đặt và trạng thái thanh toán tại cinemaX.</p>
           </div>
 
-          {message && <Alert variant="warning">{message}</Alert>}
+          {message && (
+            <Alert variant={message.includes("thành công") ? "success" : "warning"}>
+              {message}
+            </Alert>
+          )}
           {loading ? (
             <Alert variant="info">Đang tải tài khoản khách hàng...</Alert>
           ) : (
@@ -107,34 +137,67 @@ function CustomerPage() {
                 <section className={styles["history-panel"]}>
                   <div className={styles["panel-heading"]}>
                     <h2>Lịch sử vé</h2>
-                    <Badge bg="dark">{account.tickets.length} vé</Badge>
+                    <div className={styles["history-actions"]}>
+                      <Badge bg="dark">{account.tickets.length} vé</Badge>
+                      <Button size="sm" variant="outline-secondary" onClick={loadAccount}>
+                        Tải lại
+                      </Button>
+                    </div>
                   </div>
                   <Table hover responsive className={styles["ticket-table"]}>
                     <thead>
                       <tr>
                         <th>Mã vé</th>
                         <th>Phim</th>
+                        <th>Phòng</th>
                         <th>Suất chiếu</th>
                         <th>Ghế</th>
+                        <th>Ngày đặt</th>
                         <th>Giá vé</th>
                         <th>Thanh toán</th>
+                        <th>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {account.tickets.map((ticket) => (
-                        <tr key={ticket.id}>
-                          <td>VE{ticket.id}</td>
-                          <td>{ticket.movie}</td>
-                          <td>{ticket.date} {ticket.time}</td>
-                          <td>{ticket.seat}</td>
-                          <td>{formatCurrency(ticket.price)}</td>
-                          <td>
-                            <Badge bg={ticket.paymentStatus === "Đã thanh toán" ? "success" : "warning"}>
-                              {ticket.paymentStatus}
-                            </Badge>
+                      {account.tickets.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="text-center">
+                            Chưa có vé nào.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        account.tickets.map((ticket) => (
+                          <tr key={ticket.id}>
+                            <td>VE{ticket.id}</td>
+                            <td>{ticket.movie}</td>
+                            <td>{ticket.room}</td>
+                            <td>{ticket.date} {ticket.time}</td>
+                            <td>{ticket.seat}</td>
+                            <td>{ticket.bookedAt}</td>
+                            <td>{formatCurrency(ticket.price)}</td>
+                            <td>
+                              <Badge bg={ticket.paymentStatus === "Đã thanh toán" ? "success" : "warning"}>
+                                {ticket.paymentStatus}
+                              </Badge>
+                            </td>
+                            <td>
+                              {ticket.paymentStatus === "Đã thanh toán" ? (
+                                <Button size="sm" variant="outline-success" disabled>
+                                  Đã thanh toán
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handlePayTicket(ticket.id)}
+                                  disabled={payingTicketId === ticket.id}
+                                >
+                                  {payingTicketId === ticket.id ? "Đang xử lý..." : "Thanh toán"}
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </Table>
                 </section>

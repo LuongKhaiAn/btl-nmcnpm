@@ -4,14 +4,7 @@ const ADMIN_ACCOUNT = {
   role: "admin",
 };
 
-const CUSTOMER_ACCOUNT = {
-  username: "customer",
-  password: "123456",
-  role: "customer",
-  customerId: 1,
-};
-
-export function login(username, password) {
+export async function login(username, password) {
   const isAdmin =
     username === ADMIN_ACCOUNT.username && password === ADMIN_ACCOUNT.password;
 
@@ -25,21 +18,23 @@ export function login(username, password) {
     return user;
   }
 
-  const isCustomer =
-    username === CUSTOMER_ACCOUNT.username && password === CUSTOMER_ACCOUNT.password;
+  try {
+    const response = await fetch("/api/auth/customer-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    const user = await response.json();
 
-  if (!isCustomer) {
+    if (!response.ok) {
+      return null;
+    }
+
+    localStorage.setItem("currentUser", JSON.stringify(user));
+    return user;
+  } catch {
     return null;
   }
-
-  const user = {
-    username: CUSTOMER_ACCOUNT.username,
-    role: CUSTOMER_ACCOUNT.role,
-    customerId: CUSTOMER_ACCOUNT.customerId,
-  };
-
-  localStorage.setItem("currentUser", JSON.stringify(user));
-  return user;
 }
 
 export function logout() {

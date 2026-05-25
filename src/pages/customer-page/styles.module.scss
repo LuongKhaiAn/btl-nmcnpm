@@ -111,6 +111,12 @@
   }
 }
 
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .ticket-table {
   margin: 0;
 

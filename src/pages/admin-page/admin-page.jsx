@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Badge,
@@ -18,6 +18,8 @@ import styles from "./styles.module.scss";
 import AddMovieModal from "./add-movie";
 import CounterTicketModal from "./counter-ticket";
 import CreateScheduleModal from "./creat-schedule";
+import EditCustomerModal from "./edit-customer";
+import EditEmployeeModal from "./edit-employee";
 import { logout } from "../../utils/auth";
 
 const emptyDashboard = {
@@ -26,6 +28,9 @@ const emptyDashboard = {
   rooms: [],
   seats: [],
   tickets: [],
+  customers: [],
+  employees: [],
+  bookedSeats: [],
   people: [],
   metrics: {
     revenue: 0,
@@ -84,6 +89,10 @@ function AdminPage() {
   const [showMovieForm, setShowMovieForm] = useState(false);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
   const [showCounterForm, setShowCounterForm] = useState(false);
+  const [editingMovie, setEditingMovie] = useState(null);
+  const [editingSchedule, setEditingSchedule] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [editingEmployee, setEditingEmployee] = useState(null);
 
   useEffect(() => {
     async function checkDatabase() {
@@ -172,7 +181,7 @@ function AdminPage() {
     navigate("/login");
   };
 
-  const handleReloadDashboard = async () => {
+  const handleReloadDashboard = useCallback(async () => {
     try {
       const response = await fetch("/api/admin/dashboard");
       const data = await response.json();
@@ -192,6 +201,66 @@ function AdminPage() {
       setSelectedRoomId(data.rooms?.[0]?.id ?? null);
     } catch (error) {
       console.error("Reload dashboard error:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        handleReloadDashboard();
+      }
+    };
+
+    window.addEventListener("focus", handleReloadDashboard);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", handleReloadDashboard);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [handleReloadDashboard]);
+
+  const openMovieForm = (movie = null) => {
+    setEditingMovie(movie);
+    setShowMovieForm(true);
+  };
+
+  const closeMovieForm = () => {
+    setShowMovieForm(false);
+    setEditingMovie(null);
+  };
+
+  const openScheduleForm = (schedule = null) => {
+    setEditingSchedule(schedule);
+    setShowScheduleForm(true);
+  };
+
+  const closeScheduleForm = () => {
+    setShowScheduleForm(false);
+    setEditingSchedule(null);
+  };
+
+  const handleDelete = async (resource, id, label) => {
+    if (!window.confirm(`Bạn có chắc muốn xóa ${label}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/${resource}/${id}`, {
+        method: "DELETE",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Không thể xóa dữ liệu.");
+      }
+
+      handleReloadDashboard();
+    } catch (error) {
+      setDashboardStatus({
+        loading: false,
+        message: error.message || "Không thể xóa dữ liệu.",
+      });
     }
   };
 
@@ -280,7 +349,7 @@ function AdminPage() {
                   <h2>Phim đang chiếu và sắp chiếu</h2>
                   <p>Danh sách lấy từ bảng PHIM và trạng thái tính theo ngày khởi chiếu.</p>
                 </div>
-                <Button onClick={() => setShowMovieForm(true)}>Thêm phim</Button>
+                <Button onClick={() => openMovieForm()}>Thêm phim</Button>
               </div>
               <Table hover responsive className={styles["data-table"]}>
                 <thead>
@@ -292,6 +361,7 @@ function AdminPage() {
                     <th>Thời lượng</th>
                     <th>Ngày khởi chiếu</th>
                     <th>Lấp đầy</th>
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -313,6 +383,20 @@ function AdminPage() {
                       <td>
                         <ProgressBar now={movie.occupancy} label={`${movie.occupancy}%`} />
                       </td>
+                      <td>
+                        <div className={styles["table-actions"]}>
+                          <Button size="sm" variant="outline-primary" onClick={() => openMovieForm(movie)}>
+                            Sửa
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => handleDelete("movies", movie.id, `phim ${movie.title}`)}
+                          >
+                            Xóa
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -325,7 +409,7 @@ function AdminPage() {
                   <h2>Lịch chiếu và phòng chiếu</h2>
                   <p>Dữ liệu join từ LICHCHIEU, PHIM, PHONGCHIEU và VE.</p>
                 </div>
-                <Button onClick={() => setShowScheduleForm(true)}>Tạo suất chiếu</Button>
+                <Button onClick={() => openScheduleForm()}>Tạo suất chiếu</Button>
               </div>
               <Table hover responsive className={styles["data-table"]}>
                 <thead>
@@ -339,6 +423,7 @@ function AdminPage() {
                     <th>Giá vé</th>
                     <th>Ghế</th>
                     <th>Trạng thái</th>
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -354,6 +439,20 @@ function AdminPage() {
                       <td>{schedule.seats}</td>
                       <td>
                         <Badge bg={getStatusVariant(schedule.status)}>{schedule.status}</Badge>
+                      </td>
+                      <td>
+                        <div className={styles["table-actions"]}>
+                          <Button size="sm" variant="outline-primary" onClick={() => openScheduleForm(schedule)}>
+                            Sửa
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => handleDelete("schedules", schedule.id, `suất chiếu ${schedule.id}`)}
+                          >
+                            Xóa
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -437,7 +536,12 @@ function AdminPage() {
                   <h2>Đặt vé online và tại quầy</h2>
                   <p>Danh sách lấy từ VE, kèm thông tin phim, phòng, ghế và khách hàng.</p>
                 </div>
-                <Button onClick={() => setShowCounterForm(true)}>Bán vé tại quầy</Button>
+                <div className={styles["toolbar-actions"]}>
+                  <Button variant="outline-secondary" onClick={handleReloadDashboard}>
+                    Tải lại
+                  </Button>
+                  <Button onClick={() => setShowCounterForm(true)}>Bán vé tại quầy</Button>
+                </div>
               </div>
               <Table hover responsive className={styles["data-table"]}>
                 <thead>
@@ -472,24 +576,87 @@ function AdminPage() {
             </Tab>
 
             <Tab eventKey="people" title="Khách hàng & nhân viên">
+              <div className={styles["toolbar"]}>
+                <div>
+                  <h2>Khách hàng</h2>
+                  <p>Quản lý hồ sơ khách hàng và lịch sử giao dịch.</p>
+                </div>
+              </div>
               <Table hover responsive className={styles["data-table"]}>
                 <thead>
                   <tr>
                     <th>Mã</th>
                     <th>Họ tên</th>
-                    <th>Nhóm/chức vụ</th>
-                    <th>Liên hệ/tài khoản</th>
+                    <th>Số điện thoại</th>
+                    <th>Email</th>
                     <th>Lượt vé</th>
+                    <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {dashboard.people.map((person) => (
-                    <tr key={person.id}>
-                      <td>{person.id}</td>
-                      <td>{person.name}</td>
-                      <td>{person.role}</td>
-                      <td>{person.phone || person.email}</td>
-                      <td>{person.visits}</td>
+                  {dashboard.customers.map((customer) => (
+                    <tr key={customer.id}>
+                      <td>C{customer.id}</td>
+                      <td>{customer.name}</td>
+                      <td>{customer.phone}</td>
+                      <td>{customer.email || "-"}</td>
+                      <td>{customer.visits}</td>
+                      <td>
+                        <div className={styles["table-actions"]}>
+                          <Button size="sm" variant="outline-primary" onClick={() => setEditingCustomer(customer)}>
+                            Sửa
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => handleDelete("customers", customer.id, `khách hàng ${customer.name}`)}
+                          >
+                            Xóa
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+
+              <div className={styles["toolbar"]}>
+                <div>
+                  <h2>Nhân viên</h2>
+                  <p>Quản lý thông tin nhân viên và tài khoản đăng nhập nội bộ.</p>
+                </div>
+              </div>
+              <Table hover responsive className={styles["data-table"]}>
+                <thead>
+                  <tr>
+                    <th>Mã</th>
+                    <th>Họ tên</th>
+                    <th>Chức vụ</th>
+                    <th>Tài khoản</th>
+                    <th>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboard.employees.map((employee) => (
+                    <tr key={employee.id}>
+                      <td>E{employee.id}</td>
+                      <td>{employee.name}</td>
+                      <td>{employee.role}</td>
+                      <td>{employee.username}</td>
+                      <td>
+                        <div className={styles["table-actions"]}>
+                          <Button size="sm" variant="outline-primary" onClick={() => setEditingEmployee(employee)}>
+                            Sửa
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline-danger"
+                            onClick={() => handleDelete("employees", employee.id, `nhân viên ${employee.name}`)}
+                          >
+                            Xóa
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -551,16 +718,18 @@ function AdminPage() {
 
         <AddMovieModal
           show={showMovieForm}
-          onHide={() => setShowMovieForm(false)}
+          onHide={closeMovieForm}
           onSuccess={handleReloadDashboard}
+          movie={editingMovie}
         />
 
         <CreateScheduleModal
           show={showScheduleForm}
-          onHide={() => setShowScheduleForm(false)}
+          onHide={closeScheduleForm}
           movies={dashboard.movies}
           rooms={dashboard.rooms}
           onSuccess={handleReloadDashboard}
+          schedule={editingSchedule}
         />
 
         <CounterTicketModal
@@ -568,6 +737,21 @@ function AdminPage() {
           onHide={() => setShowCounterForm(false)}
           schedules={dashboard.schedules}
           seats={dashboard.seats}
+          bookedSeats={dashboard.bookedSeats}
+          onSuccess={handleReloadDashboard}
+        />
+
+        <EditCustomerModal
+          show={Boolean(editingCustomer)}
+          onHide={() => setEditingCustomer(null)}
+          customer={editingCustomer}
+          onSuccess={handleReloadDashboard}
+        />
+
+        <EditEmployeeModal
+          show={Boolean(editingEmployee)}
+          onHide={() => setEditingEmployee(null)}
+          employee={editingEmployee}
           onSuccess={handleReloadDashboard}
         />
       </Container>

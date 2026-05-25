@@ -10,13 +10,18 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const [loading, setLoading] = useState(false);
 
-    const user = login(username.trim(), password);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const user = await login(username.trim(), password);
 
     if (!user) {
       setError("Tài khoản hoặc mật khẩu không đúng.");
+      setLoading(false);
       return;
     }
 
@@ -29,7 +34,7 @@ function LoginPage() {
         <Card.Body>
           <h1 className={styles["login-title"]}>Đăng nhập</h1>
           <p className={styles["login-hint"]}>
-            Admin: admin/admin123 - Khách hàng: customer/123456
+            Admin: admin/admin123 - Khách hàng: số điện thoại hoặc email / 123456
           </p>
           {error && <Alert variant="danger">{error}</Alert>}
           <Form onSubmit={handleSubmit}>
@@ -55,8 +60,8 @@ function LoginPage() {
               />
             </Form.Group>
 
-            <Button type="submit" className="w-100">
-              Đăng nhập
+            <Button type="submit" className="w-100" disabled={loading}>
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
           </Form>
         </Card.Body>

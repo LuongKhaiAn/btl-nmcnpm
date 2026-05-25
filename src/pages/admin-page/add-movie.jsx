@@ -1,8 +1,40 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 
-function AddMovieModal({ show, onHide, onSuccess }) {
-  const [formData, setFormData] = useState({
+const emptyForm = {
+  tenPhim: "",
+  theLoai: "",
+  thoiLuong: "",
+  daoDien: "",
+  dienVien: "",
+  quocGia: "",
+  ngayKhoiChieu: "",
+  noiDung: "",
+};
+
+function AddMovieModal({ show, onHide, onSuccess, movie }) {
+  const [formData, setFormData] = useState(emptyForm);
+
+  useEffect(() => {
+    if (!show) {
+      return;
+    }
+
+    setFormData(movie ? {
+      tenPhim: movie.title || "",
+      theLoai: movie.genre || "",
+      thoiLuong: movie.duration || "",
+      daoDien: movie.director || "",
+      dienVien: movie.cast || "",
+      quocGia: movie.country || "",
+      ngayKhoiChieu: movie.releaseDate || "",
+      noiDung: movie.description || "",
+    } : emptyForm);
+    setError("");
+    setSuccess("");
+  }, [movie, show]);
+
+  const resetForm = () => setFormData({
     tenPhim: "",
     theLoai: "",
     thoiLuong: "",
@@ -35,8 +67,8 @@ function AddMovieModal({ show, onHide, onSuccess }) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/admin/movies", {
-        method: "POST",
+      const response = await fetch(movie ? `/api/admin/movies/${movie.id}` : "/api/admin/movies", {
+        method: movie ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
@@ -44,20 +76,11 @@ function AddMovieModal({ show, onHide, onSuccess }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Không thể thêm phim.");
+        throw new Error(data.message || (movie ? "Không thể cập nhật phim." : "Không thể thêm phim."));
       }
 
-      setSuccess("Thêm phim thành công!");
-      setFormData({
-        tenPhim: "",
-        theLoai: "",
-        thoiLuong: "",
-        daoDien: "",
-        dienVien: "",
-        quocGia: "",
-        ngayKhoiChieu: "",
-        noiDung: "",
-      });
+      setSuccess(movie ? "Cập nhật phim thành công!" : "Thêm phim thành công!");
+      resetForm();
 
       setTimeout(() => {
         onHide();
@@ -73,7 +96,7 @@ function AddMovieModal({ show, onHide, onSuccess }) {
   return (
     <Modal show={show} onHide={onHide} size="lg">
       <Modal.Header closeButton>
-        <Modal.Title>Thêm phim mới</Modal.Title>
+        <Modal.Title>{movie ? "Sửa phim" : "Thêm phim mới"}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {error && <Alert variant="danger">{error}</Alert>}
@@ -179,7 +202,7 @@ function AddMovieModal({ show, onHide, onSuccess }) {
           onClick={handleSubmit}
           disabled={loading}
         >
-          {loading ? "Đang thêm..." : "Thêm phim"}
+          {loading ? "Đang lưu..." : movie ? "Cập nhật phim" : "Thêm phim"}
         </Button>
       </Modal.Footer>
     </Modal>

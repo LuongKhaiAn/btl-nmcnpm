@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
 
-function CreateScheduleModal({ show, onHide, movies, rooms, onSuccess }) {
+const emptyForm = {
+  maPhim: "",
+  maPhong: "",
+  ngayChieu: "",
+  gioChieu: "",
+  giaVe: "",
+};
+
+function CreateScheduleModal({ show, onHide, movies, rooms, onSuccess, schedule }) {
   const [formData, setFormData] = useState({
     maPhim: "",
     maPhong: "",
@@ -13,6 +21,22 @@ function CreateScheduleModal({ show, onHide, movies, rooms, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    if (!show) {
+      return;
+    }
+
+    setFormData(schedule ? {
+      maPhim: schedule.movieId || "",
+      maPhong: schedule.roomId || "",
+      ngayChieu: schedule.rawDate || schedule.date || "",
+      gioChieu: schedule.time || "",
+      giaVe: schedule.price || "",
+    } : emptyForm);
+    setError("");
+    setSuccess("");
+  }, [schedule, show]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -38,8 +62,8 @@ function CreateScheduleModal({ show, onHide, movies, rooms, onSuccess }) {
     setLoading(true);
 
     try {
-      const response = await fetch("/api/admin/schedules", {
-        method: "POST",
+      const response = await fetch(schedule ? `/api/admin/schedules/${schedule.id}` : "/api/admin/schedules", {
+        method: schedule ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           maPhim: Number(formData.maPhim),
@@ -53,17 +77,11 @@ function CreateScheduleModal({ show, onHide, movies, rooms, onSuccess }) {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Không thể tạo suất chiếu.");
+        throw new Error(data.message || (schedule ? "Không thể cập nhật suất chiếu." : "Không thể tạo suất chiếu."));
       }
 
-      setSuccess("Tạo suất chiếu thành công!");
-      setFormData({
-        maPhim: "",
-        maPhong: "",
-        ngayChieu: "",
-        gioChieu: "",
-        giaVe: "",
-      });
+      setSuccess(schedule ? "Cập nhật suất chiếu thành công!" : "Tạo suất chiếu thành công!");
+      setFormData(emptyForm);
 
       setTimeout(() => {
         onHide();
@@ -79,7 +97,7 @@ function CreateScheduleModal({ show, onHide, movies, rooms, onSuccess }) {
   return (
     <Modal show={show} onHide={onHide} size="lg">
       <Modal.Header closeButton>
-        <Modal.Title>Tạo suất chiếu mới</Modal.Title>
+        <Modal.Title>{schedule ? "Sửa suất chiếu" : "Tạo suất chiếu mới"}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
         {error && <Alert variant="danger">{error}</Alert>}
@@ -160,7 +178,7 @@ function CreateScheduleModal({ show, onHide, movies, rooms, onSuccess }) {
           onClick={handleSubmit}
           disabled={loading}
         >
-          {loading ? "Đang tạo..." : "Tạo suất chiếu"}
+          {loading ? "Đang lưu..." : schedule ? "Cập nhật suất chiếu" : "Tạo suất chiếu"}
         </Button>
       </Modal.Footer>
     </Modal>
