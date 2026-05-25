@@ -921,7 +921,8 @@ app.get("/api/customer/account", async (req, res) => {
             g.TenGhe AS seat,
             DATE_FORMAT(lc.NgayChieu, '%d/%m/%Y') AS date,
             TIME_FORMAT(lc.GioChieu, '%H:%i') AS time,
-            DATE_FORMAT(v.NgayDat, '%d/%m/%Y %H:%i') AS bookedAt,
+             pc.LoaiPhong AS format,
+             DATE_FORMAT(v.NgayDat, '%d/%m/%Y %H:%i') AS bookedAt,
             v.GiaVe AS price,
             v.TrangThaiThanhToan AS paymentStatus
           FROM VE v

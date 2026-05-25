@@ -255,6 +255,10 @@ function AdminPage() {
         throw new Error(data.message || "Không thể xóa dữ liệu.");
       }
 
+      setDashboardStatus({
+        loading: false,
+        message: `Xóa ${label} thành công.`,
+      });
       handleReloadDashboard();
     } catch (error) {
       setDashboardStatus({
