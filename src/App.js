@@ -5,6 +5,7 @@ import BookingPage from "./pages/booking-page/booking-page";
 import CustomerPage from "./pages/customer-page/customer-page";
 import HomePage from "./pages/home-page/home-page";
 import LoginPage from "./pages/login-page/login-page";
+import RegisterPage from "./pages/register-page/register-page";
 import { isAdmin, isCustomer } from "./utils/auth";
 
 function AdminRoute({ children }) {
@@ -29,6 +30,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage/>} />
         <Route path="/booking" element={<BookingPage />} />
+        <Route path="/register" element={<RegisterPage />} />
         <Route
           path="/account"
           element={

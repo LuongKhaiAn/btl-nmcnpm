@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Badge, Button, Col, Container, Form, Row } from "react-bootstrap";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import styles from "./styles.module.scss";
 import Footer from "../home-page/footer";
 import HomeHeader from "../home-page/home-header";
+import { getCurrentUser, isCustomer } from "../../utils/auth";
 
 function formatCurrency(value) {
   return new Intl.NumberFormat("vi-VN", {
@@ -26,7 +27,9 @@ function getSeatState(seat, bookedSeatIds) {
 }
 
 function BookingPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const currentUser = getCurrentUser();
   const [data, setData] = useState({ movies: [], schedules: [], seats: [], bookedSeats: [] });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -34,10 +37,27 @@ function BookingPage() {
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
   const [selectedSeatId, setSelectedSeatId] = useState("");
   const [form, setForm] = useState({
-    customerName: "",
-    phone: "",
-    email: "",
+    customerName: currentUser?.name || "",
+    phone: currentUser?.phone || "",
+    email: currentUser?.email || "",
   });
+
+  useEffect(() => {
+    if (!isCustomer()) {
+      navigate("/register");
+      return;
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    if (currentUser) {
+      setForm({
+        customerName: currentUser.name || "",
+        phone: currentUser.phone || "",
+        email: currentUser.email || "",
+      });
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     async function loadOptions() {
@@ -222,16 +242,16 @@ function BookingPage() {
                     <Form.Label>Họ tên</Form.Label>
                     <Form.Control
                       value={form.customerName}
-                      onChange={(event) => setForm({ ...form, customerName: event.target.value })}
-                      required
+                      readOnly
+                      disabled
                     />
                   </Form.Group>
                   <Form.Group className="mb-3">
                     <Form.Label>Số điện thoại</Form.Label>
                     <Form.Control
                       value={form.phone}
-                      onChange={(event) => setForm({ ...form, phone: event.target.value })}
-                      required
+                      readOnly
+                      disabled
                     />
                   </Form.Group>
                   <Form.Group className="mb-3">
@@ -239,7 +259,8 @@ function BookingPage() {
                     <Form.Control
                       type="email"
                       value={form.email}
-                      onChange={(event) => setForm({ ...form, email: event.target.value })}
+                      readOnly
+                      disabled
                     />
                   </Form.Group>
 

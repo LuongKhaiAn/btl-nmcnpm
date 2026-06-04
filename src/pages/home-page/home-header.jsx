@@ -66,7 +66,12 @@ const HomeHeader = () => {
                 </button>
               </Dropdown>
             ) : (
-              <Button href="/login">Đăng nhập</Button>
+              <>
+                <Button href="/register" variant="outline-primary" className="me-2">
+                  Đăng ký
+                </Button>
+                <Button href="/login">Đăng nhập</Button>
+              </>
             )}
           </div>
         </Navbar.Collapse>

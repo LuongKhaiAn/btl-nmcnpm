@@ -69,12 +69,59 @@ app.post("/api/auth/customer-login", async (req, res) => {
     res.json({
       username: customer.phone || customer.email,
       displayName: customer.name,
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
       role: "customer",
       customerId: customer.customerId,
     });
   } catch (error) {
     res.status(500).json({
       message: "Không thể đăng nhập khách hàng.",
+      error: error.message,
+    });
+  }
+});
+
+app.post("/api/auth/customer-register", async (req, res) => {
+  const { name, phone, email, password } = req.body;
+
+  if (!name || !phone || !email || !password) {
+    res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin." });
+    return;
+  }
+
+  try {
+    // Check if customer already exists
+    const [existing] = await db.query(
+      `SELECT MaKhachHang FROM KHACHHANG WHERE SoDienThoai = ? OR Email = ? LIMIT 1`,
+      [phone, email],
+    );
+
+    if (existing.length > 0) {
+      res.status(400).json({ message: "Số điện thoại hoặc email đã được đăng ký." });
+      return;
+    }
+
+    // Insert new customer
+    const [result] = await db.query(
+      `INSERT INTO KHACHHANG (HoTen, SoDienThoai, Email) VALUES (?, ?, ?)`,
+      [name, phone, email],
+    );
+
+    res.json({
+      message: "Đăng ký tài khoản thành công.",
+      customerId: result.insertId,
+      username: phone,
+      displayName: name,
+      name,
+      phone,
+      email,
+      role: "customer",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Không thể đăng ký tài khoản.",
       error: error.message,
     });
   }
