@@ -36,28 +36,15 @@ function BookingPage() {
   const [selectedMovieId, setSelectedMovieId] = useState(searchParams.get("movieId") || "");
   const [selectedScheduleId, setSelectedScheduleId] = useState("");
   const [selectedSeatId, setSelectedSeatId] = useState("");
-  const [form, setForm] = useState({
-    customerName: currentUser?.name || "",
-    phone: currentUser?.phone || "",
-    email: currentUser?.email || "",
-  });
+  const customerId = currentUser?.customerId;
+  const hasCustomerInfo = Boolean(customerId || currentUser?.phone || currentUser?.email);
 
   useEffect(() => {
     if (!isCustomer()) {
-      navigate("/register");
+      navigate("/login");
       return;
     }
   }, [navigate]);
-
-  useEffect(() => {
-    if (currentUser) {
-      setForm({
-        customerName: currentUser.name || "",
-        phone: currentUser.phone || "",
-        email: currentUser.email || "",
-      });
-    }
-  }, [currentUser]);
 
   useEffect(() => {
     async function loadOptions() {
@@ -122,6 +109,12 @@ function BookingPage() {
     event.preventDefault();
     setMessage("");
 
+    if (!hasCustomerInfo) {
+      setMessage("Vui lòng đăng nhập bằng tài khoản khách hàng để đặt vé.");
+      navigate("/login");
+      return;
+    }
+
     try {
       const response = await fetch("/api/booking", {
         method: "POST",
@@ -129,7 +122,9 @@ function BookingPage() {
         body: JSON.stringify({
           scheduleId: Number(selectedScheduleId),
           seatId: Number(selectedSeatId),
-          ...form,
+          customerId,
+          phone: currentUser?.phone,
+          email: currentUser?.email,
         }),
       });
       const result = await response.json();
@@ -241,7 +236,7 @@ function BookingPage() {
                   <Form.Group className="mb-3">
                     <Form.Label>Họ tên</Form.Label>
                     <Form.Control
-                      value={form.customerName}
+                      value={currentUser?.name || ""}
                       readOnly
                       disabled
                     />
@@ -249,7 +244,7 @@ function BookingPage() {
                   <Form.Group className="mb-3">
                     <Form.Label>Số điện thoại</Form.Label>
                     <Form.Control
-                      value={form.phone}
+                      value={currentUser?.phone || ""}
                       readOnly
                       disabled
                     />
@@ -258,7 +253,7 @@ function BookingPage() {
                     <Form.Label>Email</Form.Label>
                     <Form.Control
                       type="email"
-                      value={form.email}
+                      value={currentUser?.email || ""}
                       readOnly
                       disabled
                     />
@@ -275,7 +270,7 @@ function BookingPage() {
                     <strong>{formatCurrency(selectedSchedule?.price)}</strong>
                   </div>
 
-                  <Button className="w-100" disabled={!selectedScheduleId || !selectedSeatId} type="submit">
+                  <Button className="w-100" disabled={!hasCustomerInfo || !selectedScheduleId || !selectedSeatId} type="submit">
                     Xác nhận đặt vé
                   </Button>
                 </Form>

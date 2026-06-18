@@ -94,7 +94,7 @@ app.post("/api/auth/customer-register", async (req, res) => {
   try {
     // Check if customer already exists
     const [existing] = await db.query(
-      `SELECT MaKhachHang FROM KHACHHANG WHERE SoDienThoai = ? OR Email = ? LIMIT 1`,
+      "SELECT MaKhachHang FROM KHACHHANG WHERE SoDienThoai = ? OR Email = ? LIMIT 1",
       [phone, email],
     );
 
@@ -105,7 +105,7 @@ app.post("/api/auth/customer-register", async (req, res) => {
 
     // Insert new customer
     const [result] = await db.query(
-      `INSERT INTO KHACHHANG (HoTen, SoDienThoai, Email) VALUES (?, ?, ?)`,
+      "INSERT INTO KHACHHANG (HoTen, SoDienThoai, Email) VALUES (?, ?, ?)",
       [name, phone, email],
     );
 
@@ -421,9 +421,9 @@ app.get("/api/booking/options", async (req, res) => {
 });
 
 app.post("/api/booking", async (req, res) => {
-  const { scheduleId, seatId, customerName, phone, email } = req.body;
+  const { scheduleId, seatId, customerId, phone, email } = req.body;
 
-  if (!scheduleId || !seatId || !customerName || !phone) {
+  if (!scheduleId || !seatId || (!customerId && !phone && !email)) {
     res.status(400).json({ message: "Vui lòng nhập đầy đủ thông tin đặt vé." });
     return;
   }
@@ -455,20 +455,23 @@ app.post("/api/booking", async (req, res) => {
       return;
     }
 
-    const [customerRows] = await connection.query(
-      "SELECT MaKhachHang FROM KHACHHANG WHERE SoDienThoai = ? LIMIT 1",
-      [phone],
-    );
+    const [customerRows] = customerId
+      ? await connection.query(
+          "SELECT MaKhachHang FROM KHACHHANG WHERE MaKhachHang = ? LIMIT 1",
+          [customerId],
+        )
+      : await connection.query(
+          "SELECT MaKhachHang FROM KHACHHANG WHERE SoDienThoai = ? OR Email = ? LIMIT 1",
+          [phone || "", email || ""],
+        );
 
-    let customerId = customerRows[0]?.MaKhachHang;
-
-    if (!customerId) {
-      const [customerResult] = await connection.query(
-        "INSERT INTO KHACHHANG (HoTen, SoDienThoai, Email) VALUES (?, ?, ?)",
-        [customerName, phone, email || null],
-      );
-      customerId = customerResult.insertId;
+    if (customerRows.length === 0) {
+      await connection.rollback();
+      res.status(404).json({ message: "Không tìm thấy thông tin khách hàng đang đăng nhập." });
+      return;
     }
+
+    const resolvedCustomerId = customerRows[0].MaKhachHang;
 
     const [ticketResult] = await connection.query(
       `
@@ -477,7 +480,7 @@ app.post("/api/booking", async (req, res) => {
         VALUES
           (?, ?, ?, NOW(), ?, 'Chưa thanh toán')
       `,
-      [scheduleId, seatId, customerId, scheduleRows[0].GiaVe],
+      [scheduleId, seatId, resolvedCustomerId, scheduleRows[0].GiaVe],
     );
 
     await connection.commit();
@@ -485,7 +488,7 @@ app.post("/api/booking", async (req, res) => {
     res.status(201).json({
       message: "Đặt vé thành công.",
       ticketId: ticketResult.insertId,
-      customerId,
+      customerId: resolvedCustomerId,
     });
   } catch (error) {
     await connection.rollback();

@@ -97,8 +97,6 @@ function RegisterPage() {
         }),
       });
 
-      const loginResult = await loginResponse.json();
-
       if (loginResponse.ok) {
         await login(form.phone.trim(), form.password);
         navigate("/booking");

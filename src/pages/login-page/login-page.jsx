@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, Button, Card, Container, Form } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import styles from "./styles.module.scss";
 import { login } from "../../utils/auth";
 
@@ -62,6 +62,15 @@ function LoginPage() {
 
             <Button type="submit" className="w-100" disabled={loading}>
               {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+            </Button>
+
+            <Button
+              as={Link}
+              to="/register"
+              variant="outline-secondary"
+              className="w-100 mt-3"
+            >
+              Đăng ký
             </Button>
           </Form>
         </Card.Body>

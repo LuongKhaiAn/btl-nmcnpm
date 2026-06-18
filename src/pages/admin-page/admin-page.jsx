@@ -273,9 +273,9 @@ function AdminPage() {
       <Navbar className={styles["admin-header"]}>
         <Navbar.Brand className={styles["brand"]}>cinemaX Admin</Navbar.Brand>
         <div className={styles["header-actions"]}>
-          <Badge bg={dbStatus.connected ? "success" : "warning"} text={dbStatus.connected ? undefined : "dark"}>
+          {/* <Badge bg={dbStatus.connected ? "success" : "warning"} text={dbStatus.connected ? undefined : "dark"}>
             {dbStatus.loading ? "Đang kiểm tra MySQL" : dbStatus.connected ? "MySQL online" : "MySQL cần kiểm tra"}
-          </Badge>
+          </Badge> */}
           <Button variant="outline-light" onClick={handleLogout}>
             Đăng xuất
           </Button>
@@ -287,10 +287,6 @@ function AdminPage() {
           <div>
             <p className={styles["eyebrow"]}>Bảng điều hành</p>
             <h1>Quản lý vận hành rạp cinemaX</h1>
-            <p>
-              Dữ liệu được tải trực tiếp từ MySQL: phim, lịch chiếu, phòng ghế,
-              đặt vé, khách hàng, nhân viên và doanh thu.
-            </p>
           </div>
           <Form className={styles["quick-search"]}>
             <Form.Label>Tìm kiếm nhanh</Form.Label>
